@@ -1,24 +1,24 @@
 from scipy import stats
 import random
 
-def generate_grid():
+def generate_grid(length):
     # Probability of finding diamonds at any location
     p_diamond = 0.3
     # Length of sides of grid
-    m = 3
+    # length = 3
     
     # Generate blocks for 16x16x16 grid
     samples = []
-    for i in range(0, m**3):
+    for i in range(0, length**3):
         samples.append(stats.bernoulli.rvs(p_diamond, 0))
     
     # Dimensions: 16 x 16 x 16
-    grid = [[[0 for x in range(m)] for x in range(m)] for x in range(m)]
+    grid = [[[0 for x in range(length)] for x in range(length)] for x in range(length)]
     # Insert samples into 3D grid array
     index = 0
-    for i in range(0, m):
-        for j in range(0, m):
-            for k in range(0, m):
+    for i in range(0, length):
+        for j in range(0, length):
+            for k in range(0, length):
                 grid[i][j][k] = samples[index]
                 index += 1
     return grid
@@ -115,28 +115,127 @@ def create_genes():
         # Append the action pair(s)
         for k in range(pairs_act_num):
             genes[i].append(genes_act_pairs[k + (i * pairs_act_num)])   # Same concept
+    
+    # Create 65th gene for random action
+    random_gene = [0,0,0,0,0,0,random.randrange(0,6,1)]
+    genes.append(random_gene)
+    
     return genes
 
-# Simulation Function
-def simulate_turtle(grid, grid_length, genes):
+# Sensor read function
+def sensor_read(state, grid, grid_length):
+    sensors = [0,0,0,0,0,0]
+
+    # For each direction
+    for i in range(0, len(sensors)):
+        # North
+        if i == 0:
+            # Check if north is wall
+            if state[0] == grid_length - 1:
+                sensors[i] = 2
+            # Else, get sensor reading
+            else:
+                sensors[i] = grid[state[0]+1][state[1]][state[2]] # 1 North
+        
+        # South
+        if i == 1:
+            # Check if north is wall
+            if state[0] == 0:
+                sensors[i] = 2
+            # Else, get sensor reading
+            else:
+                sensors[i] = grid[state[0]-1][state[1]][state[2]] # 1 South
+        
+        # East
+        if i == 2:
+            # Check if east is wall
+            if state[2] == grid_length - 1:
+                sensors[i] = 2
+            # Else, get sensor reading
+            else:
+                sensors[i] = grid[state[0]][state[1]][state[2]+1] # 1 East
+        
+        # West
+        if i == 3:
+            # Check if west is wall
+            if state[2] == 0:
+                sensors[i] = 2
+            # Else, get sensor reading
+            else:
+                sensors[i] = grid[state[0]][state[1]][state[2]-1] # 1 West
+        
+        # Down
+        if i == 4:
+            # Check if down is wall
+            if state[1] == grid_length - 1:
+                sensors[i] = 2
+            # Else, get sensor reading
+            else:
+                sensors[i] = grid[state[0]][state[1]+1][state[2]] # 1 Down
+        
+        # Up
+        if i == 5:
+            # Check if up is wall
+            if state[1] == 0:
+                sensors[i] = 2
+            # Else, get sensor reading
+            else:
+                sensors[i] = grid[state[0]][state[1]-1][state[2]] # 1 Up
+    
+    return sensors
+    
+# Gene match with action function
+def gene_match(sensors, genes):
+    # Default to random action (last item in 2D gene matrix)
+    action = genes[-1][-1]
+    
+    # Attempt to match with first 64 (non-random) genes:
+    for i in range(0, len(genes)-1):
+        if genes[i][0:6] == sensors:
+            action = genes[i][-1]
+    
+    return action
+
+# Simulation Function - Simulates 1 liftime of 1 turtle
+def simulate_turtle(genes):
     score = 0
     # Set battery life
     life = 205
+    # Generate grid
+    grid_length = 16
+    grid = generate_grid(grid_length)
+    
     # Drop turtle in random place
     random.seed()
-    start_x = random.randrange(0,15,1)
-    start_z = random.randrange(0,15,1)
-    start_y = random.randrange(0,15,1)
+    start_x = random.randrange(0,grid_length - 1,1) # North-South
+    start_z = random.randrange(0,grid_length - 1,1) # Down-Up
+    start_y = random.randrange(0,grid_length - 1,1) # East-West
     state = [start_x, start_z, start_y, life]
+    
+    # Array of move functions
+    movements = [move_north, move_south, move_east, move_west, move_down, move_up]
     
     while state[3] > 0:
         # If current position is on diamond, add score
         if grid[state[0], state[1], state[2]] == 1:
             score += 1
-        # Initialize sensor data
+        
+        # Get sensor data
         # [NORTH, SOUTH, EAST, WEST, DOWN, UP]
-        sensors = [0,0,0,0,0,0]
-        # Get senses, take appropriate course of action (TODO)
+        sensors = sensor_read(state, grid, grid_length)
+        
+        # Attempt to match sensors with genes 1-64:
+        action = gene_match(sensors, genes)
+        
+        # Perform movement
+        if action < 6:
+            movements[action](state, grid_length)
+        else:
+            random.seed()
+            move = random.randrange(0,5,1)
+            movements[move](state, grid_length)
+    
+    return score
     
 
 # Mining Turtle Class
@@ -151,8 +250,8 @@ class Turtle:
     def simulate(self):
         self.score = simulate_turtle(self.dna)
 
-grid = generate_grid()
-print(grid)
+#grid = generate_grid(16)
+#print(grid)
 
 # Assuming m x m x m grid:
 
