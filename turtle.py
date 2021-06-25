@@ -34,7 +34,7 @@ def generate_grid(length):
 # Movement functions
 def move_north(state, m):
     state[3] -= 1
-    if state[0] < m:
+    if state[0] < m - 1:
         state[0] += 1
 
 def move_south(state, m):
@@ -44,7 +44,7 @@ def move_south(state, m):
 
 def move_east(state, m):
     state[3] -= 1
-    if state[2] < m:
+    if state[2] < m - 1:
         state[2] += 1
 
 def move_west(state, m):
@@ -54,7 +54,7 @@ def move_west(state, m):
 
 def move_down(state, m):
     state[3] -= 1
-    if state[1] < m:
+    if state[1] < m - 1:
         state[1] += 1
 
 def move_up(state, m):
@@ -85,8 +85,8 @@ def move_up(state, m):
 # Gene Generation Function
 def create_genes():
     genes = []
-    gene_dir_pairs = []
-    gene_act_pairs = []
+    genes_dir_pairs = []
+    genes_act_pairs = []
     gene_num = 64
     pairs_dir_num = 6
     pairs_act_num = 1
@@ -96,25 +96,28 @@ def create_genes():
     
     # Generate gene pairs for sensor direction sequence
     # 0 = Nothing, 1 = Diamonds, 2 = Wall
-    for i in range(0, gene_num * pairs_dir_num):
-        #genes_dir_pairs.append(stats.binom.rvs(2, 2/3, 0)) # Binomial dist for random nums
-        genes_dir_pairs.append(random.randrange(0,2,1))     # Basic random numbers
+    for i in range(0, gene_num):
+        genes_dir_pairs.append([])
+        for j in range(0, pairs_dir_num):
+            genes_dir_pairs[i].append(random.randrange(0,2,1))     # Basic random numbers
     
     # Generate gene pairs for actions
     # 0 = North, 1 = South, 2 = East, 3 = West, 4 = Down, 5 = Up, 6 = Random
     for i in range(0, gene_num * pairs_act_num):
-        genes_act_pairs.append(random.randrange(0,6,1))
+        genes_act_pairs.append([])
+        for j in range(0, pairs_act_num):
+            genes_act_pairs[i].append(random.randrange(0,6,1))
     
     # Combine sensor direction sequence with action sequence for all genes
-    for i in range(0, gene_num * (pairs_dir_num + pairs_act_num)):
+    for i in range(0, gene_num):
         # Create single gene array within genes matrix
         genes.append([])
         # Append the first sensor direction bits of the genes
-        for j in range(pairs_dir_num):
-            genes[i].append(genes_dir_pairs[j + (i * pairs_dir_num)])   # Index + offset (ex. if i = 3 and j = 0, append 0 + (3 * 6) = 18th direction pair
+        for j in range(0, pairs_dir_num):
+            genes[i].append(genes_dir_pairs[i][j])
         # Append the action pair(s)
-        for k in range(pairs_act_num):
-            genes[i].append(genes_act_pairs[k + (i * pairs_act_num)])   # Same concept
+        for k in range(0, pairs_act_num):
+            genes[i].append(genes_act_pairs[i][k])
     
     # Create 65th gene for random action
     random_gene = [0,0,0,0,0,0,random.randrange(0,6,1)]
@@ -198,9 +201,10 @@ def gene_match(sensors, genes):
 
 # Simulation Function - Simulates 1 liftime of 1 turtle
 def simulate_turtle(genes):
+    print("Simulate")
     score = 0
     # Set battery life
-    life = 205
+    life = 20
     # Generate grid
     grid_length = 16
     grid = generate_grid(grid_length)
@@ -216,8 +220,9 @@ def simulate_turtle(genes):
     movements = [move_north, move_south, move_east, move_west, move_down, move_up]
     
     while state[3] > 0:
+        print("State: ",state[0],state[1],state[2])
         # If current position is on diamond, add score
-        if grid[state[0], state[1], state[2]] == 1:
+        if grid[state[0]][state[1]][state[2]] == 1:
             score += 1
         
         # Get sensor data
@@ -249,6 +254,10 @@ class Turtle:
     
     def simulate(self):
         self.score = simulate_turtle(self.dna)
+
+turtle1 = Turtle("Tortoise")
+turtle1.simulate()
+print(turtle1.score)
 
 #grid = generate_grid(16)
 #print(grid)
