@@ -201,7 +201,7 @@ def gene_match(sensors, genes):
 
 # Simulation Function - Simulates 1 liftime of 1 turtle
 def simulate_turtle(genes):
-    print("Simulate")
+    #print("Simulate")
     score = 0
     # Set battery life
     life = 20
@@ -220,7 +220,7 @@ def simulate_turtle(genes):
     movements = [move_north, move_south, move_east, move_west, move_down, move_up]
     
     while state[3] > 0:
-        print("State: ",state[0],state[1],state[2])
+        #print("State: ",state[0],state[1],state[2])
         # If current position is on diamond, add score
         if grid[state[0]][state[1]][state[2]] == 1:
             score += 1
@@ -255,9 +255,94 @@ class Turtle:
     def simulate(self):
         self.score = simulate_turtle(self.dna)
 
-turtle1 = Turtle("Tortoise")
-turtle1.simulate()
-print(turtle1.score)
+# Simulate a population of turtles, return a sorted array based on score
+def simulate_population(turtles):
+    for i in turtles:
+        i.simulate()
+    
+    # Sort turtles by score, descending order
+    # Refer to Python Wiki, page on Sorting
+    turtles.sort(key=lambda turtle: turtle.score, reverse=True)
+
+# Breed two turtles and return the child
+def breed_turtles(turtle1, turtle2, child_name):
+    # Get the half and full lengths of the DNA
+    half_dna = len(turtle1.dna)//2
+    full_dna = len(turtle1.dna)
+    
+    # Check if the half lengths match
+    if half_dna != len(turtle2.dna)//2:
+        # If not, use the minimum of the two
+        if half_dna > len(turtle2.dna)//2:
+            half_dna = len(turtle2.dna)//2
+            full_dna = len(turtle2.dna)
+    
+    child = Turtle(child_name)
+    # Create the first half of the DNA using turtle1 genes
+    for i in range(0, half_dna):
+        child.dna[i] = turtle1.dna[i]
+    
+    # Create the second half of the DNA using turtle2 genes
+    for i in range(half_dna, full_dna):
+        child.dna[i] = turtle2.dna[i]
+    
+    return child
+
+# Take a population of turtles, weed out the weakest half and breed the top half, return new generation
+def breed_generation(old_gen):
+    # Only breed top half of turtles
+    half_value = len(old_gen)//2
+    
+    new_gen = []
+    for i in range(0, half_value, 2):
+        # Breed children, combine DNA in two ways
+        first_child = breed_turtles(old_gen[i], old_gen[i+1], "Turtle " + str(i))
+        second_child = breed_turtles(old_gen[i+1], old_gen[i], "Turtle " + str(i + 1))
+        # Add whole family to new generation
+        new_gen.append(old_gen[i])
+        new_gen.append(old_gen[i+1])
+        new_gen.append(first_child)
+        new_gen.append(second_child)
+    
+    return new_gen
+
+# Get the average score of a population
+def get_average(population):
+    total = 0
+    average = 0.0
+    
+    # Get total
+    for i in range(0, len(population)):
+        total += population[i].score
+    
+    # Divide by number of turtles of to get average
+    average = total / len(population)
+    return average
+
+# Simulate the evolution of a population of turtles over time, return array of average scores over each generation
+def turtle_evolution(iterations, pop_size):
+    # Create the first generation
+    current_gen = []
+    for i in range(0, pop_size):
+        current_gen.append(Turtle("Turtle " + str(i)))
+    
+    avg_scores = []
+    # Simulate many generations over time
+    for i in range(0, iterations):
+        # DEBUGGING: Print current gen
+        print("Generation: ", i)
+        simulate_population(current_gen)
+        # Get the average score
+        avg_scores.append(get_average(current_gen))
+        # DEBUGGING: print turtle scores, should be sorted
+        #for j in range(0, len(current_gen)):
+            #print("Turtle ", j, " score: ", current_gen[j].score)
+        # Breed a new generation, and repeat
+        current_gen = breed_generation(current_gen)
+    
+    return avg_scores
+
+print(turtle_evolution(10, 200))
 
 #grid = generate_grid(16)
 #print(grid)
