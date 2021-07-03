@@ -3,14 +3,23 @@ import random
 
 def generate_grid(length):
     # Probability of finding diamonds at any location
-    p_diamond = 0.3
+    p_diamond = 0.4
     # Length of sides of grid
     # length = 3
     
     # Generate blocks for 16x16x16 grid
+    # Begin with the diamond blocks
     samples = []
+    # Generate p_diamond percentage of diamond blocks within specified volume
+    diamond_locations = random.sample(range(0, length**3), int(round(p_diamond * (length**3))))
+    
+    # Create empty sample array of length^3
     for i in range(0, length**3):
-        samples.append(stats.bernoulli.rvs(p_diamond, 0))
+        samples.append(0)
+    
+    # Insert diamonds into this array
+    for i in diamond_locations:
+        samples[i] = 1
     
     # Dimensions: 16 x 16 x 16
     grid = [[[0 for x in range(length)] for x in range(length)] for x in range(length)]
@@ -87,7 +96,7 @@ def create_genes():
     genes = []
     genes_dir_pairs = []
     genes_act_pairs = []
-    gene_num = 64
+    gene_num = 256
     pairs_dir_num = 6
     pairs_act_num = 1
     
@@ -195,18 +204,20 @@ def gene_match(sensors, genes):
     # Attempt to match with first 64 (non-random) genes:
     for i in range(0, len(genes)-1):
         if genes[i][0:6] == sensors:
+            #print("gene_match")
             action = genes[i][-1]
+            break
     
     return action
 
 # Simulation Function - Simulates 1 liftime of 1 turtle
-def simulate_turtle(genes):
-    #print("Simulate")
+def simulate_turtle(genes, name):
+    #print("Simulating: ", name)
     score = 0
     # Set battery life
-    life = 20
+    life = 5
     # Generate grid
-    grid_length = 16
+    grid_length = 5
     grid = generate_grid(grid_length)
     
     # Drop turtle in random place
@@ -220,10 +231,13 @@ def simulate_turtle(genes):
     movements = [move_north, move_south, move_east, move_west, move_down, move_up]
     
     while state[3] > 0:
-        #print("State: ",state[0],state[1],state[2])
-        # If current position is on diamond, add score
+        #print("State: ",state[0],state[1],state[2],state[3])
+        # Increase score per time alive
+        score += 1
+        # If current position is on diamond, add score AND life, consume diamond
         if grid[state[0]][state[1]][state[2]] == 1:
-            score += 1
+            state[3] += 1
+            grid[state[0]][state[1]][state[2]] = 0
         
         # Get sensor data
         # [NORTH, SOUTH, EAST, WEST, DOWN, UP]
@@ -253,7 +267,7 @@ class Turtle:
         self.score = 0
     
     def simulate(self):
-        self.score = simulate_turtle(self.dna)
+        self.score = simulate_turtle(self.dna, self.name)
 
 # Simulate a population of turtles, return a sorted array based on score
 def simulate_population(turtles):
@@ -278,6 +292,10 @@ def breed_turtles(turtle1, turtle2, child_name):
             full_dna = len(turtle2.dna)
     
     child = Turtle(child_name)
+    # DEBUGGING: Print parent DNA
+    #print("Parent 1: ", turtle1.dna)
+    #print("Parent 2: ", turtle2.dna)
+    
     # Create the first half of the DNA using turtle1 genes
     for i in range(0, half_dna):
         child.dna[i] = turtle1.dna[i]
@@ -286,11 +304,13 @@ def breed_turtles(turtle1, turtle2, child_name):
     for i in range(half_dna, full_dna):
         child.dna[i] = turtle2.dna[i]
     
+    #print("Child: ", child.dna)
+    
     return child
 
 # Take a population of turtles, weed out the weakest half and breed the top half, return new generation
 def breed_generation(old_gen):
-    # Only breed top half of turtles
+    # Only breed top half of turtles (0-half)
     half_value = len(old_gen)//2
     
     new_gen = []
@@ -329,20 +349,26 @@ def turtle_evolution(iterations, pop_size):
     avg_scores = []
     # Simulate many generations over time
     for i in range(0, iterations):
-        # DEBUGGING: Print current gen
-        print("Generation: ", i)
         simulate_population(current_gen)
         # Get the average score
         avg_scores.append(get_average(current_gen))
         # DEBUGGING: print turtle scores, should be sorted
         #for j in range(0, len(current_gen)):
             #print("Turtle ", j, " score: ", current_gen[j].score)
+        # DEBUGGING: Print current gen's score
+        print("Generation ", i, " score: ", avg_scores[i])
         # Breed a new generation, and repeat
         current_gen = breed_generation(current_gen)
     
+    # DEBUGGING: Print stats about last generation:
+    print("DNA Gene Count Final: ", len(current_gen[0].dna))
+    
     return avg_scores
 
-print(turtle_evolution(10, 200))
+print(turtle_evolution(100, 200))
+
+# SPECIAL NOTES:
+# More genes = slower, but upper-limit of improvement increases
 
 #grid = generate_grid(16)
 #print(grid)
